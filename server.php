@@ -44,6 +44,9 @@ class Socks5Server
     const REP_SUCC = 0x00;
     // todo other status
 
+
+    const CONNECT_TIMEOUT = 10;
+
     public $method;
 
     public $clients = [];
@@ -105,7 +108,7 @@ class Socks5Server
                 $local[$fd]['stage'] = self::STAGE_REQUEST;
             });
             $this->remote_client->on('error', function ($client) use ($server, $fd) {
-                echo 'remote connection error.', PHP_EOL;
+                echo 'remote connection error[' . $client->errCode . ']: ' . socket_strerror($client->errCode), PHP_EOL;
                 $server->close($fd);
             });
             $this->remote_client->on('receive', function ($cli, $data) use ($server, $fd) {
@@ -117,7 +120,7 @@ class Socks5Server
                 echo 'remote connection close.', PHP_EOL;
                 $server->close($fd);
             });
-            $this->remote_client->connect($data_addr, $data_port);
+            $this->remote_client->connect($data_addr, $data_port, self::CONNECT_TIMEOUT);  // 设置超时时间为10s
         } elseif ($this->clients[$fd]['stage'] == self::STAGE_REQUEST) {
             echo 'request...', PHP_EOL;
             // 将客户端的请求转发给远程目标服务器

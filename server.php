@@ -45,7 +45,7 @@ class Socks5Server
     // todo other status
 
 
-    const CONNECT_TIMEOUT = 10;
+    const CONNECT_TIMEOUT = 10;  // 设置超时时间为10s
 
     public $method;
 
@@ -87,7 +87,7 @@ class Socks5Server
                 $server->close();
             }
             $this->clients[$fd]['stage'] = self::STAGE_ADDRESSING;
-            $server->send($fd, pack('C2', self::VER, self::METHOD_NOAUTH));
+            $server->send($fd, pack('C2', self::VER, $this->method));
         } elseif ($this->clients[$fd]['stage'] == self::STAGE_ADDRESSING) {
             echo 'addressing...', PHP_EOL;
             $data_hex_all = bin2hex($data);
@@ -120,7 +120,7 @@ class Socks5Server
                 echo 'remote connection close.', PHP_EOL;
                 $server->close($fd);
             });
-            $this->remote_client->connect($data_addr, $data_port, self::CONNECT_TIMEOUT);  // 设置超时时间为10s
+            $this->remote_client->connect($data_addr, $data_port, self::CONNECT_TIMEOUT);
         } elseif ($this->clients[$fd]['stage'] == self::STAGE_REQUEST) {
             echo 'request...', PHP_EOL;
             // 将客户端的请求转发给远程目标服务器

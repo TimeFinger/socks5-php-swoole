@@ -94,37 +94,27 @@ class Socks5Server
             $data_hex_header = unpack('H2VER/H2CMD/H2RSV/H2ATYP', $data);
             $data_hex_body = substr($data_hex_all, strlen(implode('', $data_hex_header)));
             $data_hex_addr = str_split(substr($data_hex_body, 0, -4), 2);
-            array_walk($data_hex_addr, function (&$val, $key) {
+            foreach ($data_hex_addr as &$val) {
                 $val = hexdec($val);
-            });
+            }
             $data_addr = implode('.', $data_hex_addr);
             $data_hex_port = substr($data_hex_all, -4);
             $data_port = hexdec($data_hex_port);
             
-            $this->remote_client = new \Swoole\Client(SWOOLE_SOCK_TCP, SWOOLE_SOCK_ASYNC);
-            $local = &$this->clients;
-            $this->remote_client->on('connect', function ($client) use ($server, $fd, &$local) {
-                $server->send($fd, pack("C10", self::VER, self::REP_SUCC, self::COMM_RSV, self::COMM_ATYPE_IPV4, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x50));
-                $local[$fd]['stage'] = self::STAGE_REQUEST;
-            });
-            $this->remote_client->on('error', function ($client) use ($server, $fd) {
-                echo 'remote connection error[' . $client->errCode . ']: ' . socket_strerror($client->errCode), PHP_EOL;
+            $this->remote_client = new \Swoole\Coroutine\Client(SWOOLE_SOCK_TCP);
+            if (!$this->remote_client->connect($data_addr, $data_port, self::CONNECT_TIMEOUT)) {
                 $server->close($fd);
-            });
-            $this->remote_client->on('receive', function ($cli, $data) use ($server, $fd) {
-                // 收到远程目标服务器发回的数据后直接转发给客户端
-                $server->send($fd, $data);
-                $server->close($fd);
-            });
-            $this->remote_client->on('close', function ($client) use ($server, $fd, &$local) {
-                echo 'remote connection close.', PHP_EOL;
-                $server->close($fd);
-            });
-            $this->remote_client->connect($data_addr, $data_port, self::CONNECT_TIMEOUT);
+                exit('remote connection error[' . $client->errCode . ']: ' . socket_strerror($client->errCode) . PHP_EOL);
+            }
+            $server->send($fd, pack("C10", self::VER, self::REP_SUCC, self::COMM_RSV, self::COMM_ATYPE_IPV4, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x50));
+            $this->clients[$fd]['stage'] = self::STAGE_REQUEST;
         } elseif ($this->clients[$fd]['stage'] == self::STAGE_REQUEST) {
             echo 'request...', PHP_EOL;
             // 将客户端的请求转发给远程目标服务器
             $this->remote_client->send($data);
+            // 将收到远程目标服务器发回的数据后直接转发给客户端
+            $server->send($fd, $this->remote_client->recv());
+            $this->remote_client->close();
         }
     }
 

@@ -104,7 +104,7 @@ class Socks5Server
             $this->remote_client = new \Swoole\Coroutine\Client(SWOOLE_SOCK_TCP);
             if (!$this->remote_client->connect($data_addr, $data_port, self::CONNECT_TIMEOUT)) {
                 $server->close($fd);
-                exit('remote connection error[' . $client->errCode . ']: ' . socket_strerror($client->errCode) . PHP_EOL);
+                exit('remote connection error[' . $this->remote_client->errCode . ']: ' . socket_strerror($this->remote_client->errCode) . PHP_EOL);
             }
             $server->send($fd, pack("C10", self::VER, self::REP_SUCC, self::COMM_RSV, self::COMM_ATYPE_IPV4, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x50));
             $this->clients[$fd]['stage'] = self::STAGE_REQUEST;

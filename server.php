@@ -84,10 +84,11 @@ class Socks5Server
             if (!in_array($this->method, $methods)) {
                 echo '不支持认证方法\x' . str_pad(dechex($this->method), 2, 0, STR_PAD_LEFT), PHP_EOL;
                 $server->send($fd, pack('C2', self::VER, self::METHOD_NOACCEPT));
-                $server->close();
+                $server->close($fd);
+            } else {
+                $this->clients[$fd]['stage'] = self::STAGE_ADDRESSING;
+                $server->send($fd, pack('C2', self::VER, $this->method));
             }
-            $this->clients[$fd]['stage'] = self::STAGE_ADDRESSING;
-            $server->send($fd, pack('C2', self::VER, $this->method));
         } elseif ($this->clients[$fd]['stage'] == self::STAGE_ADDRESSING) {
             echo 'addressing...', PHP_EOL;
             $data_hex_all = bin2hex($data);
@@ -123,5 +124,3 @@ class Socks5Server
         echo "connection close: {$fd}", PHP_EOL;
     }
 }
-
-new \TimeFinger\Socks5Server();

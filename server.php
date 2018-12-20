@@ -95,10 +95,27 @@ class Socks5Server
             $data_hex_header = unpack('H2VER/H2CMD/H2RSV/H2ATYP', $data);
             $data_hex_body = substr($data_hex_all, strlen(implode('', $data_hex_header)));
             $data_hex_addr = str_split(substr($data_hex_body, 0, -4), 2);
-            foreach ($data_hex_addr as &$val) {
-                $val = hexdec($val);
+            switch ($data_hex_header['ATYP']) {
+                case self::COMM_ATYPE_IPV4:
+                    foreach ($data_hex_addr as &$val) {
+                        $val = hexdec($val);
+                    }
+                    $data_addr = implode('.', $data_hex_addr);
+                    break;
+                case self::COMM_ATYPE_DOMAIN:
+                    $addr_len = array_shift($data_hex_addr);
+                    foreach ($data_hex_addr as &$val) {
+                        $val = chr(hexdec($val));
+                    }
+                    $data_addr = implode('', $data_hex_addr);
+                    break;
+                case self::COMM_ATYPE_IPV6:
+                    # code...
+                    break;
+                default:
+                    # code...
+                    break;
             }
-            $data_addr = implode('.', $data_hex_addr);
             $data_hex_port = substr($data_hex_all, -4);
             $data_port = hexdec($data_hex_port);
             

@@ -1,0 +1,19 @@
+{
+    "name": "timefinger/socks5",
+    "description": "基于php7+swoole4的socks5实现",
+    "authors": [
+        {
+            "name": "TimeFinger",
+            "email": "hewn2011@126.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.0",
+        "ext-swoole": ">=4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "TimeFinger\\": "src/"
+        }
+    }
+}

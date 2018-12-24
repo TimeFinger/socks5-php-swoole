@@ -13,7 +13,6 @@ class Socks5Client implements ConstantInterface
     public function __construct()
     {
         // 必须在server之前，因为如果在server之后的话，onReceive中取不到$this->proxy_client
-        // 明天试试把client和server分别写入协程里
         $this->proxy_client = new \Swoole\Client(SWOOLE_SOCK_TCP);
         if (!$this->proxy_client->connect('127.0.0.1', 9503, self::CONNECT_TIMEOUT)) {
             exit('remote connection error[' . $this->proxy_client->errCode . ']: ' . socket_strerror($this->proxy_client->errCode) . PHP_EOL);

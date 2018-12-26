@@ -43,6 +43,27 @@ class Socks5Client implements ConstantInterface
             $this->proxy_client->close();
             $server->stop();    // 调用close会提示 Cannot close connection in master process.
         }
+
+        if ($method == self::METHOD_USERPASS) {
+            $uname = 'admin';
+            $passwd = 'abcdef';
+
+            $send = [
+                self::VER,
+                strlen($uname),
+            ];
+            $send = array_merge($send, unpack('c*', $uname));
+            $send[] = strlen($passwd);
+            $send = array_merge($send, unpack('c*', $passwd));
+            $this->proxy_client->send(pack('C*', ...$send));
+            $data = $this->proxy_client->recv();
+            list($ver, $status) = str_split(bin2hex($data), 2);
+            if (hexdec($ver) != self::VER || hexdec($status) != self::AUTH_STATUS_SUCC) {
+                echo '用户名或密码错误', "\n";
+                $this->proxy_client->close();
+                $server->stop();    // 调用close会提示 Cannot close connection in master process.
+            }
+        }
     }
 
     public function onConnect($serv, $fd)

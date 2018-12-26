@@ -10,7 +10,13 @@ class Socks5Server implements ConstantInterface
 
     private $remote_client = null;
 
-    public function __construct($method = 0x00)
+    // 用户名密码，暂时固定
+    private $user_pass_map = [
+        'root'  =>  '123456',
+        'admin' =>  'abcdef'
+    ];
+
+    public function __construct($method = 0x02)
     {
         $this->method = $method;
         $server = new \Swoole\Server("0.0.0.0", 9503);
@@ -43,8 +49,48 @@ class Socks5Server implements ConstantInterface
                 $server->send($fd, pack('C2', self::VER, self::METHOD_NOACCEPT));
                 $server->close($fd);
             } else {
-                $this->clients[$fd]['stage'] = self::STAGE_ADDRESSING;
+                switch ($this->method) {
+                    case self::METHOD_NOAUTH:
+                        $this->clients[$fd]['stage'] = self::STAGE_ADDRESSING;
+                        break;
+                    case self::METHOD_GSSAPI:
+                        // code..
+                        break;
+                    case self::METHOD_USERPASS:
+                        $this->clients[$fd]['stage'] = self::STAGE_AUTH;
+                        break;
+                    default:
+                        // code..
+                        break;
+                }
                 $server->send($fd, pack('C2', self::VER, $this->method));
+            }
+        } elseif ($this->clients[$fd]['stage'] == self::STAGE_AUTH) {
+            echo 'auth...', PHP_EOL;
+            $data_hex_all = bin2hex($data);
+            $data_hex_all = str_split($data_hex_all, 2);
+            list($ver, $ulen) = $data_hex_all;
+            $uname = array_slice($data_hex_all, 2, $ulen);
+            foreach ($uname as &$char) {
+                $char = hexdec($char);
+            }
+            $uname = pack('c*', ...$uname);
+            $plen = $data_hex_all[2 + $ulen];
+            $passwd = array_slice($data_hex_all, '-' . $plen);
+            foreach ($passwd as &$char) {
+                $char = hexdec($char);
+            }
+            $passwd = pack('c*', ...$passwd);
+            // 检测用户名密码是否正确
+            $passwd_right = $this->user_pass_map[$uname] ?? '';
+            if (!empty($passwd_right) && $passwd_right == $passwd) {
+                $server->send($fd, pack('c2', self::VER, self::AUTH_STATUS_SUCC));
+                $this->clients[$fd]['stage'] = self::STAGE_ADDRESSING;
+            } else {
+                var_dump($passwd_right);
+                echo '用户名密码验失败', PHP_EOL;
+                $server->send($fd, pack('c2', self::VER, self::AUTH_STATUS_FAILD));
+                $server->close($fd);
             }
         } elseif ($this->clients[$fd]['stage'] == self::STAGE_ADDRESSING) {
             echo 'addressing...', PHP_EOL;

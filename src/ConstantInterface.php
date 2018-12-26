@@ -10,8 +10,9 @@ interface ConstantInterface
      * 各请求阶段定义
      */
     const STAGE_INIT = 0;
-    const STAGE_ADDRESSING = 1;
-    const STAGE_REQUEST = 2;
+    const STAGE_AUTH = 1;
+    const STAGE_ADDRESSING = 2;
+    const STAGE_REQUEST = 3;
 
     /**
      * 初始化阶段METHODS定义
@@ -22,6 +23,12 @@ interface ConstantInterface
     const METHOD_INNA = [0x03, 0x7F];
     const METHOD_PRIVATE = [0x80, 0xFE];
     const METHOD_NOACCEPT = 0xFF;
+
+    /**
+     * auth阶段一些常量定义
+     */
+    const AUTH_STATUS_SUCC = 0x00;
+    const AUTH_STATUS_FAILD = 0x01;
 
     /**
      * ADDRESSING客户端请求阶段CMD定义

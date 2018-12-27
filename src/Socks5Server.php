@@ -135,7 +135,6 @@ class Socks5Server implements ConstantInterface
             $this->remote_client->send($data);
             // 将收到远程目标服务器发回的数据后直接转发给客户端
             $server->send($fd, $this->remote_client->recv());
-            $this->remote_client->close();
         }
     }
 

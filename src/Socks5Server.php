@@ -4,11 +4,12 @@ namespace TimeFinger;
 
 class Socks5Server implements ConstantInterface
 {
+
+    use HeaderTrait;
+
     public $method;
 
     public $clients = [];
-
-    private $remote_client = null;
 
     // 用户名密码，暂时固定
     private $user_pass_map = [
@@ -16,7 +17,7 @@ class Socks5Server implements ConstantInterface
         'admin' =>  'abcdef'
     ];
 
-    public function __construct($method = 0x02)
+    public function __construct($method = 0x00)
     {
         $this->method = $method;
         $server = new \Swoole\Server("0.0.0.0", 9503);
@@ -103,14 +104,14 @@ class Socks5Server implements ConstantInterface
                     foreach ($data_hex_addr as &$val) {
                         $val = hexdec($val);
                     }
-                    $data_addr = implode('.', $data_hex_addr);
+                    $this->dst_addr = implode('.', $data_hex_addr);
                     break;
                 case self::COMM_ATYPE_DOMAIN:
                     $addr_len = array_shift($data_hex_addr);
                     foreach ($data_hex_addr as &$val) {
                         $val = chr(hexdec($val));
                     }
-                    $data_addr = implode('', $data_hex_addr);
+                    $this->dst_addr = implode('', $data_hex_addr);
                     break;
                 case self::COMM_ATYPE_IPV6:
                     # code...
@@ -120,21 +121,32 @@ class Socks5Server implements ConstantInterface
                     break;
             }
             $data_hex_port = substr($data_hex_all, -4);
-            $data_port = hexdec($data_hex_port);
+            $this->dst_port = hexdec($data_hex_port);
             
-            $this->remote_client = new \Swoole\Coroutine\Client(SWOOLE_SOCK_TCP);
-            if (!$this->remote_client->connect($data_addr, $data_port, self::CONNECT_TIMEOUT)) {
+            $this->clients[$fd]['remote_client'] = new \Swoole\Coroutine\Client(SWOOLE_SOCK_TCP);
+            if (!$this->clients[$fd]['remote_client']->connect($this->dst_addr, $this->dst_port, self::CONNECT_TIMEOUT)) {
                 $server->close($fd);
-                exit('remote connection error[' . $this->remote_client->errCode . ']: ' . socket_strerror($this->remote_client->errCode) . PHP_EOL);
+                exit('remote connection error[' . $this->clients[$fd]['remote_client']->errCode . ']: ' . socket_strerror($this->clients[$fd]['remote_client']->errCode) . PHP_EOL);
             }
             $server->send($fd, pack("C10", self::VER, self::REP_SUCC, self::COMM_RSV, self::COMM_ATYPE_IPV4, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x50));
             $this->clients[$fd]['stage'] = self::STAGE_REQUEST;
         } elseif ($this->clients[$fd]['stage'] == self::STAGE_REQUEST) {
             echo 'request...', PHP_EOL;
             // 将客户端的请求转发给远程目标服务器
-            $this->remote_client->send($data);
+            $host = $this->getHost($data);
+            $port = $this->getPort($data);
+            if ($host != $this->dst_addr || $port != $this->dst_port) {
+                $remote_client = new \Swoole\Coroutine\Client(SWOOLE_SOCK_TCP);
+                if (!$remote_client->connect($host, $port, self::CONNECT_TIMEOUT)) {
+                    $server->close($fd);
+                    exit('remote connection error[' . $remote_client->errCode . ']: ' . socket_strerror($remote_client->errCode) . PHP_EOL);
+                }
+            } else {
+                $remote_client = $this->clients[$fd]['remote_client'];
+            }
+            $remote_client->send($data);
             // 将收到远程目标服务器发回的数据后直接转发给客户端
-            $server->send($fd, $this->remote_client->recv());
+            $server->send($fd, $remote_client->recv());
         }
     }
 

@@ -4,6 +4,8 @@ namespace TimeFinger;
 
 class Socks5Client implements ConstantInterface
 {
+    use HeaderTrait;
+    
     public $method;
     
     private $proxy_client = null;
@@ -76,25 +78,14 @@ class Socks5Client implements ConstantInterface
     public function onReceive($server, $fd, $from_id, $data)
     {
         if (!$this->auth) {
-            // 解析请求头信息
-            $data_lines = explode("\n", trim($data));
-            $header_lines = [];
-            foreach ($data_lines as $key => $line) {
-                if ($key > 0) {
-                    $line_arr = explode(': ', trim($line));
-                    $header_lines[$line_arr[0]] = $line_arr[1];
-                }
-            }
-    
             // 拼接认证所需要的数据并发送认证数据
             $send = [
                 self::VER,
                 self::CMD_CONNECT,
                 self::COMM_RSV
             ];
-            $host_arr = explode(':', $header_lines['Host']);
-            $host = $host_arr[0] ?? '';
-            $port = $host_arr[1] ?? 80;
+            $host = $this->getHost($data);
+            $port = $this->getPort($data);
             $ipv4_reg = '/^(\d{1,3}\.){3}\d{1,3}$/';
             $ipv6_reg = "/^([a-fAA-F0-9]{4}\:){7}[a-fAA-F0-9]{4}$/";
             if (preg_match($ipv4_reg, $host)) {

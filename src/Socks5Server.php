@@ -17,10 +17,12 @@ class Socks5Server implements ConstantInterface
         'admin' =>  'abcdef'
     ];
 
-    public function __construct($method = 0x00)
+    public function __construct($configs)
     {
-        $this->method = $method;
-        $server = new \Swoole\Server("0.0.0.0", 9503);
+        $this->method = $configs['method'] ?? 0x00;
+        $server_host = $configs['host'] ?? '0.0.0.0';
+        $server_port = $configs['port'] ?? 9503;
+        $server = new \Swoole\Server($server_host, $server_port);
         $server->on('connect', array($this, 'onConnect'));
         $server->on('receive', array($this, 'onReceive'));
         $server->on('close', array($this, 'onClose'));

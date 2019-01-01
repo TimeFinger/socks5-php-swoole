@@ -13,8 +13,6 @@ class Socks5Server implements ConstantInterface
 
     // 用户名密码，暂时固定
     private $user_pass_map = [
-        'root'  =>  '123456',
-        'admin' =>  'abcdef'
     ];
 
     public function __construct($configs)
@@ -22,6 +20,10 @@ class Socks5Server implements ConstantInterface
         $this->method = $configs['method'] ?? 0x00;
         $server_host = $configs['host'] ?? '0.0.0.0';
         $server_port = $configs['port'] ?? 9503;
+        if ($configs['user'] && $configs['pass']) {
+            $this->user_pass_map[$configs['user']] = $configs['pass'];
+        }
+
         $server = new \Swoole\Server($server_host, $server_port);
         $server->on('connect', array($this, 'onConnect'));
         $server->on('receive', array($this, 'onReceive'));

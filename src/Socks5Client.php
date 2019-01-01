@@ -5,7 +5,7 @@ namespace TimeFinger;
 class Socks5Client implements ConstantInterface
 {
     use HeaderTrait;
-    
+
     public $method;
     
     private $proxy_client = null;
@@ -14,15 +14,20 @@ class Socks5Client implements ConstantInterface
 
     private $auth = false;
 
-    public function __construct()
+    public function __construct($configs)
     {
         // 必须在server之前，因为如果在server之后的话，onReceive中取不到$this->proxy_client
         $this->proxy_client = new \Swoole\Client(SWOOLE_SOCK_TCP);
-        if (!$this->proxy_client->connect('127.0.0.1', 9503, self::CONNECT_TIMEOUT)) {
+        $server_host = $configs['server_host'] ?? '127.0.0.1';
+        $server_port = $configs['server_port'] ?? 9503;
+        if (!$this->proxy_client->connect($server_host, $server_port, self::CONNECT_TIMEOUT)) {
             exit('remote connection error[' . $this->proxy_client->errCode . ']: ' . socket_strerror($this->proxy_client->errCode) . PHP_EOL);
         }
         
-        $server = new \Swoole\Server("0.0.0.0", 1081);
+        $local_host = $configs['local_host'] ?? '0.0.0.0';
+        $local_port = $configs['local_port'] ?? 1081;
+        $this->configs = $configs;
+        $server = new \Swoole\Server($local_host, $local_port);
         $server->on('start', array($this, 'onStart'));
         $server->on('connect', array($this, 'onConnect'));
         $server->on('receive', array($this, 'onReceive'));
@@ -49,8 +54,8 @@ class Socks5Client implements ConstantInterface
         }
 
         if ($method == self::METHOD_USERPASS) {
-            $uname = 'admin';
-            $passwd = 'abcdef';
+            $uname = $this->configs['server_user'] ?? '';
+            $passwd = $this->configs['server_pass'] ?? '';
 
             $send = [
                 self::VER,

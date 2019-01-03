@@ -11,7 +11,7 @@ class Socks5Server implements ConstantInterface
 
     public $clients = [];
 
-    // 用户名密码，暂时固定
+    // 用户名密码映射数组
     private $user_pass_map = [
     ];
 
